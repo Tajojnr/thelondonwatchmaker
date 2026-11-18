@@ -15,14 +15,14 @@ const HOLD_START = 0.06; // the first watch is held so the section lands before 
 const HOLD_END = 0.06; // the last watch is held so it can be read
 
 const WATCH_ITEMS = [
-  { id: 1, name: "Rolex Submariner Date", ref: "126610LN", calibre: "Calibre 3235", service: "Full overhaul and pressure seal", image: "/watches/watch-1.png" },
-  { id: 2, name: "Patek Philippe Nautilus", ref: "5711/1A", calibre: "Calibre 324 S C", service: "Micro-laser welding and polish", image: "/watches/watch-2.png" },
-  { id: 3, name: "Audemars Piguet Royal Oak", ref: "15500ST", calibre: "Calibre 4302", service: "Bezel geometric lapping", image: "/watches/watch-3.png" },
-  { id: 4, name: "Cartier Santos de Cartier", ref: "WSSA0029", calibre: "Calibre 1847 MC", service: "Regulation and demagnetisation", image: "/watches/watch-4.png" },
-  { id: 5, name: "Omega Speedmaster Moonwatch", ref: "310.30.42", calibre: "Calibre 3861 Co-Axial", service: "Chronograph lever alignment", image: "/watches/watch-5.png" },
-  { id: 6, name: "Rolex Cosmograph Daytona", ref: "116500LN", calibre: "Calibre 4130", service: "Vertical clutch service", image: "/watches/watch-6.png" },
-  { id: 7, name: "Vacheron Constantin Overseas", ref: "4500V", calibre: "Calibre 5100", service: "Complete calibre wash", image: "/watches/watch-7.png" },
-  { id: 8, name: "IWC Big Pilot 43", ref: "IW329301", calibre: "Calibre 82100", service: "Pellaton winding service", image: "/watches/watch-8.png" },
+  { id: 1, name: "Rolex Submariner Date", ref: "126610LN", calibre: "Calibre 3235", service: "Full overhaul and pressure seal", image: "/watches/watch-4.png" },
+  { id: 2, name: "Patek Philippe Nautilus", ref: "5711/1A", calibre: "Calibre 324 S C", service: "Micro-laser welding and polish", image: "/watches/watch-7.png" },
+  { id: 3, name: "Audemars Piguet Royal Oak", ref: "15500ST", calibre: "Calibre 4302", service: "Bezel geometric lapping", image: "/watches/watch-6.png" },
+  { id: 4, name: "Cartier Santos de Cartier", ref: "WSSA0029", calibre: "Calibre 1847 MC", service: "Regulation and demagnetisation", image: "/watches/watch-3.png" },
+  { id: 5, name: "Omega Speedmaster Moonwatch", ref: "310.30.42", calibre: "Calibre 3861 Co-Axial", service: "Chronograph lever alignment", image: "/watches/watch-9.png" },
+  { id: 6, name: "Rolex Cosmograph Daytona", ref: "116500LN", calibre: "Calibre 4130", service: "Vertical clutch service", image: "/watches/watch-5.png" },
+  { id: 7, name: "Vacheron Constantin Overseas", ref: "4500V", calibre: "Calibre 5100", service: "Complete calibre wash", image: "/watches/watch-8.png" },
+  { id: 8, name: "IWC Big Pilot 43", ref: "IW329301", calibre: "Calibre 82100", service: "Pellaton winding service", image: "/watches/watch-11.png" },
 ];
 
 const display = 'font-[family-name:var(--font-display)]';
@@ -233,11 +233,11 @@ export default function BrandsScrollGallery() {
     >
       <div className="sticky top-0 flex h-screen w-full flex-col overflow-hidden">
         {/* Backdrop, dimmed so the text always wins */}
-        <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full opacity-50" />
-        <div className="pointer-events-none absolute inset-0 bg-[#06100C]/70 md:bg-gradient-to-r md:from-[#06100C] md:via-[#06100C]/75 md:to-[#06100C]/30" />
+        <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full opacity-25" />
+        <div className="pointer-events-none absolute inset-0 bg-[#06100C]/82 md:bg-[linear-gradient(90deg,#06100C_0%,rgba(6,16,12,.96)_38%,rgba(6,16,12,.74)_68%,rgba(6,16,12,.5)_100%)]" />
 
         {/* Header */}
-        <div data-reveal className={`relative z-20 pt-10 opacity-0 ${wrap}`}>
+        <div data-reveal className={`relative z-20 pt-24 opacity-0 sm:pt-28 ${wrap}`}>
           <div className="flex items-end justify-between gap-6 border-b border-[#C9A050]/20 pb-4">
             <h2 id="calibres-heading" className={`${display} text-2xl font-medium sm:text-4xl`}>
               Calibres serviced at the bench
@@ -281,7 +281,7 @@ export default function BrandsScrollGallery() {
             ))}
           </div>
 
-          <div className="relative order-first mx-auto h-56 w-56 sm:h-72 sm:w-72 md:order-none md:h-[26rem] md:w-[26rem]">
+          <div className="relative order-first mx-auto h-64 w-64 sm:h-80 sm:w-80 md:order-none md:h-[28rem] md:w-[28rem] lg:h-[32rem] lg:w-[32rem]">
             <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(201,160,80,0.2),transparent_65%)]" />
             {/* The watch drifts a few pixels toward the pointer, like a jewel in a display case */}
             <div ref={floatRef} className="absolute inset-0 will-change-transform">

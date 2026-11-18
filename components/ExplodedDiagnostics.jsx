@@ -1,10 +1,13 @@
 // components/ExplodedDiagnostics.jsx
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-gsap.registerPlugin(ScrollTrigger);
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+  ScrollTrigger.config({ ignoreMobileResize: true });
+}
 
 const TOTAL_FRAMES = 30;
 
@@ -46,16 +49,17 @@ export default function ExplodedDiagnostics() {
   const trackRef = useRef(null);
   const framesRef = useRef([]);
   const lastIndexRef = useRef(0);
+  const lastWidthRef = useRef(0);
   const [ready, setReady] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Load the frames (tries frame_001.webp, then frame_0001.webp)
+  // Load the WebP frames
   useEffect(() => {
     let cancelled = false;
 
     framesRef.current = Array.from({ length: TOTAL_FRAMES }, (_, i) => {
       const n = i + 1;
-      const img = new window.Image();
+      const img = new Image();
       img.decoding = 'async';
       img.onerror = () => {
         img.onerror = null;
@@ -75,7 +79,7 @@ export default function ExplodedDiagnostics() {
     };
   }, []);
 
-  // Entrance: heading and step panel settle in once, as the section nears
+  // Entrance reveal
   useEffect(() => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const ctx = gsap.context(() => {
@@ -86,20 +90,20 @@ export default function ExplodedDiagnostics() {
       }
       ScrollTrigger.create({
         trigger: containerRef.current,
-        start: 'top 60%',
+        start: 'top 70%',
         once: true,
         onEnter: () =>
           gsap.fromTo(
             items,
-            { y: 24 },
-            { y: 0, opacity: 1, duration: 1.1, ease: 'power3.out', stagger: 0.18 }
+            { y: 24, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1, ease: 'power3.out', stagger: 0.15 }
           ),
       });
     }, containerRef);
     return () => ctx.revert();
   }, []);
 
-  // Canvas sizing, frame drawing, slow settle zoom, progress track and step index
+  // Canvas drawing, mobile stabilization, and scrub sync
   useEffect(() => {
     if (!ready || !canvasRef.current || !containerRef.current) return;
 
@@ -113,7 +117,7 @@ export default function ExplodedDiagnostics() {
     let cssH = 0;
 
     const sizeCanvas = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       cssW = canvas.clientWidth || window.innerWidth;
       cssH = canvas.clientHeight || window.innerHeight;
       canvas.width = cssW * dpr;
@@ -122,7 +126,6 @@ export default function ExplodedDiagnostics() {
     };
 
     const draw = (index) => {
-      // Fall back to the nearest earlier frame that has finished loading
       for (let k = index; k >= 0; k--) {
         const img = framesRef.current[k];
         if (img && img.complete && img.naturalWidth) {
@@ -143,7 +146,7 @@ export default function ExplodedDiagnostics() {
       trigger: containerRef.current,
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 0.6,
+      scrub: 0.35,
       onUpdate: (self) => {
         if (!reduceMotion) {
           currentFrame = Math.min(
@@ -151,12 +154,14 @@ export default function ExplodedDiagnostics() {
             TOTAL_FRAMES - 1
           );
           draw(currentFrame);
-          // The footage slowly settles as the inspection progresses
-          gsap.set(zoomRef.current, { scale: 1.06 - 0.06 * self.progress });
+          if (zoomRef.current) {
+            gsap.set(zoomRef.current, { scale: 1.05 - 0.05 * self.progress });
+          }
         }
 
-        // A continuous gold line fills the track beside the step list
-        if (trackRef.current) gsap.set(trackRef.current, { scaleY: self.progress });
+        if (trackRef.current) {
+          gsap.set(trackRef.current, { scaleY: self.progress });
+        }
 
         const stepIndex = Math.min(
           Math.floor(self.progress * DIAGNOSTIC_STEPS.length),
@@ -170,12 +175,25 @@ export default function ExplodedDiagnostics() {
     });
 
     const handleResize = () => {
-      sizeCanvas();
-      draw(currentFrame);
+      const width = window.innerWidth;
+      // Prevent mobile address bar scroll triggers from resetting the canvas buffer
+      if (Math.abs(width - lastWidthRef.current) > 20 || lastWidthRef.current === 0) {
+        lastWidthRef.current = width;
+        sizeCanvas();
+        draw(currentFrame);
+      }
     };
+
+    lastWidthRef.current = window.innerWidth;
     window.addEventListener('resize', handleResize);
 
+    const refreshTimer = setTimeout(() => {
+      ScrollTrigger.refresh();
+      draw(currentFrame);
+    }, 250);
+
     return () => {
+      clearTimeout(refreshTimer);
       trigger.kill();
       window.removeEventListener('resize', handleResize);
     };
@@ -185,16 +203,26 @@ export default function ExplodedDiagnostics() {
     <section
       ref={containerRef}
       aria-labelledby="diagnostics-heading"
-      className="relative h-[280vh] border-t border-[#C9A050]/20 bg-[#06100C] text-[#F7F4EE]"
+      className="relative h-[280vh] border-t border-[#C9A050]/20 bg-[#06100C] text-[#F7F4EE] select-none"
     >
       <div className="sticky top-0 flex h-screen w-full flex-col justify-between overflow-hidden">
-        <div ref={zoomRef} className="absolute inset-0 will-change-transform">
-          <canvas ref={canvasRef} aria-hidden="true" className="h-full w-full" />
+        {/* Canvas background layer */}
+        <div ref={zoomRef} className="absolute inset-0 will-change-transform pointer-events-none">
+          <canvas
+            ref={canvasRef}
+            aria-hidden="true"
+            className="h-full w-full object-cover opacity-90"
+          />
         </div>
+
+        {/* Gradient vignette for text legibility */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#06100C] via-[#06100C]/40 to-[#06100C]/80" />
 
         {/* Heading */}
-        <div data-reveal className={`relative z-20 pt-12 opacity-0 ${wrap}`}>
+        <div data-reveal className={`relative z-20 pt-12 md:pt-16 opacity-0 ${wrap}`}>
+          <p className="text-xs uppercase tracking-[0.25em] text-[#C9A050] font-medium mb-3">
+            On-The-Spot Inspection
+          </p>
           <h2
             id="diagnostics-heading"
             className={`${display} max-w-2xl text-4xl font-medium leading-[1.05] tracking-tight text-balance md:text-6xl`}
@@ -203,34 +231,34 @@ export default function ExplodedDiagnostics() {
           </h2>
         </div>
 
-        {/* Active step, with the full sequence beside it */}
+        {/* Active step panel */}
         <div data-reveal className={`relative z-20 pb-10 opacity-0 md:pb-14 ${wrap}`}>
           <div className="grid items-end gap-10 lg:grid-cols-12 lg:gap-16">
-            {/* Steps are stacked in one cell and cross-fade, moving in the direction of travel */}
+            {/* Left step details */}
             <div aria-live="polite" className="grid lg:col-span-7">
               {DIAGNOSTIC_STEPS.map((s, i) => {
                 const isActive = i === activeIndex;
                 const state = isActive
-                  ? 'translate-y-0 opacity-100 delay-150'
+                  ? 'translate-y-0 opacity-100 delay-100'
                   : i < activeIndex
-                    ? '-translate-y-3 opacity-0 pointer-events-none'
-                    : 'translate-y-3 opacity-0 pointer-events-none';
+                    ? '-translate-y-4 opacity-0 pointer-events-none'
+                    : 'translate-y-4 opacity-0 pointer-events-none';
                 return (
                   <div
                     key={s.id}
                     aria-hidden={!isActive}
-                    className={`col-start-1 row-start-1 transition-all duration-700 ${ease} motion-reduce:transition-none ${state}`}
+                    className={`col-start-1 row-start-1 transition-all duration-500 ${ease} motion-reduce:transition-none ${state}`}
                   >
-                    <p className="text-sm tabular-nums text-[#C9A050]">
-                      Step {s.id} of {DIAGNOSTIC_STEPS.length}
+                    <p className="text-xs tracking-widest uppercase font-semibold text-[#C9A050]">
+                      Phase {s.id} of {DIAGNOSTIC_STEPS.length}
                     </p>
-                    <h3 className={`${display} mt-3 text-3xl font-medium leading-[1.1] md:text-5xl`}>
+                    <h3 className={`${display} mt-2 text-2xl md:text-4xl font-medium leading-[1.1] text-[#F7F4EE]`}>
                       {s.title}
                     </h3>
-                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[#F7F4EE]/75">
+                    <p className="mt-3 max-w-xl text-sm md:text-base leading-relaxed text-[#F7F4EE]/80">
                       {s.desc}
                     </p>
-                    <p className="mt-6 inline-block border-t border-[#C9A050]/30 pt-4 text-sm text-[#F7F4EE]/65">
+                    <p className="mt-4 inline-block border-t border-[#C9A050]/30 pt-3 text-xs md:text-sm text-[#C9A050]/90">
                       {s.note}
                     </p>
                   </div>
@@ -238,37 +266,37 @@ export default function ExplodedDiagnostics() {
               })}
             </div>
 
-            {/* Desktop: the sequence beside a track that fills with scroll */}
+            {/* Desktop progress list */}
             <ol className="relative hidden border-l border-[#F7F4EE]/15 lg:col-span-5 lg:block">
               <span
                 ref={trackRef}
                 aria-hidden="true"
-                className="absolute -left-px top-0 h-full w-px origin-top bg-[#C9A050]"
+                className="absolute -left-px top-0 h-full w-px origin-top bg-[#C9A050] transition-transform duration-75"
                 style={{ transform: 'scaleY(0)' }}
               />
               {DIAGNOSTIC_STEPS.map((s, i) => (
                 <li
                   key={s.id}
                   aria-current={i === activeIndex ? 'step' : undefined}
-                  className={`flex gap-5 py-3 pl-6 text-lg transition-all duration-500 ${ease} motion-reduce:transition-none ${
+                  className={`flex gap-5 py-3 pl-6 text-sm transition-all duration-300 ${ease} motion-reduce:transition-none ${
                     i === activeIndex
-                      ? 'translate-x-1 text-[#F7F4EE]'
-                      : 'translate-x-0 text-[#F7F4EE]/45'
+                      ? 'translate-x-1 font-medium text-[#F7F4EE]'
+                      : 'translate-x-0 text-[#F7F4EE]/40'
                   }`}
                 >
-                  <span className="tabular-nums">{s.id}</span>
+                  <span className="tabular-nums font-mono text-[#C9A050]">0{s.id}</span>
                   <span>{s.title}</span>
                 </li>
               ))}
             </ol>
 
-            {/* Mobile: progress only, titles would not fit */}
+            {/* Mobile progress indicator */}
             <div aria-hidden="true" className="flex gap-2 lg:hidden">
               {DIAGNOSTIC_STEPS.map((s, i) => (
                 <div
                   key={s.id}
-                  className={`h-px flex-1 transition-colors duration-500 ${
-                    i <= activeIndex ? 'bg-[#C9A050]' : 'bg-[#F7F4EE]/15'
+                  className={`h-0.5 flex-1 transition-colors duration-300 ${
+                    i <= activeIndex ? 'bg-[#C9A050]' : 'bg-[#F7F4EE]/20'
                   }`}
                 />
               ))}
